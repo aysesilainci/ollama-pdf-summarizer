@@ -1,0 +1,32 @@
+FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv \
+    build-essential cmake git **ninja-build** \
+    libgl1 libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt ./
+
+# cuBLAS ile derleme
+ENV CMAKE_ARGS="-DGGML_CUBLAS=ON"
+ENV FORCE_CMAKE=1
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY app.py prompts.py ./
+
+ENV MODEL_PATH=/models/model.gguf
+ENV N_CTX=8192
+ENV N_BATCH=512
+ENV N_THREADS=0
+ENV N_GPU_LAYERS=60
+ENV TEMPERATURE=0.2
+ENV TOP_P=0.95
+ENV MAX_TOKENS_INTERMEDIATE=256
+ENV MAX_TOKENS_FINAL=512
+ENV MAX_CHARS=6000
+ENV OVERLAP=400
+
+EXPOSE 8501
+CMD ["bash", "-lc", "streamlit run app.py --server.address=0.0.0.0 --server.port=8501"]
